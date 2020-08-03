@@ -1,0 +1,25 @@
+{
+  "name": "wbplugin",
+  "version": "1.0.0",
+  "description": "plugin for test",
+  "cordova": {
+    "id": "wbplugin",
+    "platforms": [
+      "ios"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PeterJames4719/cordova-pluginTest.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-ios"
+  ],
+  "author": "pj",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/PeterJames4719/cordova-pluginTest/issues"
+  },
+  "homepage": "https://github.com/PeterJames4719/cordova-pluginTest#readme"
+}

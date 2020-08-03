@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="wbplugin" version="1.0.0" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>cordova-plugin-wbplugin</name>
+    
+    <js-module name="BloomAd" src="www/bloom-ad.js">
+        <clobbers target="BloomAd" />
+    </js-module>
+    
+    <platform name="ios">
+        <config-file parent="/*" target="config.xml">
+            <feature name="BloomAd">
+                <param name="ios-package" value="BloomAdPlugin" />
+            </feature>
+        </config-file>
+        <header-file src="src/ios/BMADH5Tool.h" />
+        <source-file src="src/ios/BMADH5Tool.m" />
+        <header-file src="src/ios/BloomAdPlugin.h" />
+        <source-file src="src/ios/BloomAdPlugin.m" />
+    </platform>
+</plugin>
