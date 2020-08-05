@@ -16,8 +16,14 @@
         <source-file src="src/ios/BMADH5Tool.m" />
         <header-file src="src/ios/BloomAdPlugin.h" />
         <source-file src="src/ios/BloomAdPlugin.m" />
+        <header-file src="src/ios/LaunchPlaceHolder.h" />
+        <source-file src="src/ios/LaunchPlaceHolder.m" />
+        <header-file src="src/ios/SplashLogoView.h" />
+        <source-file src="src/ios/SplashLogoView.m" />
         <framework src="src/ios/BloomADSDK.framework" custom="true" embed="true"/>
         <resource-file src="src/ios/BUAdSDK.bundle"/>
+        <resource-file src="src/ios/LaunchPlaceHolder.xib"/>
+        <resource-file src="src/ios/SplashLogoView.xib"/>
         <podspec>
           <config>
             <source url="https://github.com/CocoaPods/Specs.git"/>

@@ -16,9 +16,6 @@ NS_ASSUME_NONNULL_BEGIN
 @class BMADUniModule;
 
 @interface BMADH5Tool : NSObject
-//@property (nonatomic, strong) NSDictionary *splashInfo;
-//@property (nonatomic, assign) NSInteger splashInterval;
-//@property (nonatomic, strong, nullable) BMADUniModule *module;
 
 + (instancetype)sharedTool;
 + (void)setDebug:(BOOL)debug;

@@ -44,7 +44,7 @@
         NSString* s=[[NSString alloc] initWithFormat:format arguments:args];
         va_end(args);
         
-        NSLog(@"BloomADPluginLOG -> %@", s);
+        NSLog(@"BloomADPluginLog -> %@", s);
     }
 }
 

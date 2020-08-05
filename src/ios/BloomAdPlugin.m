@@ -8,8 +8,11 @@
 #import "BloomAdPlugin.h"
 #import <BloomADSDK/BloomADSDK.h>
 #import "BMADH5Tool.h"
+#import "LaunchPlaceHolder.h"
+#import "SplashLogoView.h"
+#import "AppDelegate.h"
 
-@interface BloomAdPlugin()<BMADRewardVideoAdCallbackDelegate, BMADInterstitialAdCallbackDelegate, BMADBannerAdCallbackDelegate>
+@interface BloomAdPlugin()<BMADRewardVideoAdCallbackDelegate, BMADInterstitialAdCallbackDelegate, BMADBannerAdCallbackDelegate, BMADSplashAdCallbackDelegate, NSXMLParserDelegate>
 
 @property (nonatomic, strong) NSString *rvCallback;
 @property (nonatomic, strong) NSString *interCallback;
@@ -19,16 +22,147 @@
 
 @property (nonatomic, strong) NSMutableDictionary *bannerCallbackDict;
 @property (nonatomic, strong) NSMutableDictionary *bannerViewDict;
+@property (nonatomic, strong) UIView *splashView;
+
+@property (nonatomic, strong) NSXMLParser *configParser;
+@property (nonatomic, strong) NSString *bloomAdElement;
+@property (nonatomic, strong) NSString *appId;
+@property (nonatomic, strong) NSString *splashLogo;
 @end
 
 @implementation BloomAdPlugin
 
+- (void)setupBloomADSDK {
+    
+    // 创建初始化配置实例
+    BMADConfigModel *config = [[BMADConfigModel alloc] init];
+    
+    // 渠道id，必填(由我司分配），下面的是测试用
+    //config.appId = @"ba0063bfbc1a5ad878";
+    config.appId = self.appId;
+    
+    /***********关于userId的设置**********/
+    // userId为可选参数，但是设置userId可以方便追查问题，请接入方按下面步骤设置
+    
+    // 1.如果已登录，可以直接在初始化的时候设置userId
+    // config.userId = @"userId007";
+    
+    // 2.如果未登录，可以在登录成功后获取配置，再设置userId
+    // BMADConfigModel *config = [BloomADSDKApi getConfig];
+    // config.userId = @"userId";
+    
+    // 3.退出登录后，置空userId
+    // BMADConfigModel *config = [BloomADSDKApi getConfig];
+    // config.userId = nil;
+    
+    // 初始化SDK
+    BOOL result = [BloomADSDKApi setupWithConfig:config];
+    
+    BMADConfigModel *config2 = [BloomADSDKApi getConfig];
+    NSLog(@"userId:%@", config2.userId);
+    NSLog(@"BloomADSDK setup success:%d", result);
+    NSLog(@"BloomADSDK version:%@", [BloomADSDKApi sdkVersion]);
+}
+
+- (void)showSplashAdFromLaunch:(BOOL)launch {
+    NSString *splashLogoPath = self.splashLogo;
+    if ([splashLogoPath hasPrefix:@"www/"]) {
+        splashLogoPath = [[splashLogoPath componentsSeparatedByString:@"www/"] lastObject];
+    }
+    NSString *pa = [self.commandDelegate pathForResource:splashLogoPath];
+    UIImage *logo = [UIImage imageWithContentsOfFile:pa];
+    
+    UIWindow *window = ((AppDelegate *)[self appDelegate]).window;
+    
+    // 开屏占位视图(加载开屏广告时的占位视图)
+    LaunchPlaceHolder *placeHolder = [LaunchPlaceHolder loadViewFromXib];
+    placeHolder.frame = window.bounds;
+    
+    // 开屏自定义logo视图(显示在开屏广告底部)
+    SplashLogoView *logoView = [SplashLogoView loadViewFromXib];
+    logoView.frame = CGRectMake(0, 0, window.bounds.size.width, floor(window.bounds.size.height/4.0));
+    logoView.logoImgView.image = logo;
+    
+    // 加载开屏
+    self.splashView = [BloomADSDKApi splashAdViewFromWindow:window delegate:self placeHolder:placeHolder customView:logoView timeout:3 isLaunch:launch group:@"s1"];
+}
+
+#pragma mark - 开屏广告回调
+
+- (void)bm_ad_splashAdCallbackWithEvent:(BMADSplashAdCallbackEvent)event error:(NSError *)error andInfo:(NSDictionary *)info {
+    NSLog(@"splash event:%zd, error:%@, info:%@", event, error, info);
+    
+    if (event == BMADSplashAdCallbackEventAdLoadSuccess) {
+        // 保存上次开屏时间
+        double ts = [[NSDate date] timeIntervalSince1970];
+        NSLog(@"splash -> save ts:%lf", ts);
+        [[NSUserDefaults standardUserDefaults] setDouble:ts forKey:@"AppLastSplashShownTimestamp"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
+    
+    // 移除开屏
+    if (event == BMADSplashAdCallbackEventAdDidClose) {
+        [self.splashView removeFromSuperview];
+        self.splashView = nil;
+    }
+}
+
 - (void)pluginInitialize {
     NSLog(@"BloomAdPlugin -> pluginInitialize");
+    [self parseConfig];
 }
 
 - (void)dealloc {
     NSLog(@"BloomAdPlugin -> dealloc");
+}
+
+- (void)parseConfig {
+    UIWindow *window = ((AppDelegate *)[self appDelegate]).window;
+    CDVViewController *vc = (id)window.rootViewController;
+    if ([vc isKindOfClass:[CDVViewController class]]) {
+        NSString *path = [vc performSelector:@selector(configFilePath)];
+        
+        NSURL* url = [NSURL fileURLWithPath:path];
+
+        self.configParser = [[NSXMLParser alloc] initWithContentsOfURL:url];
+        if (self.configParser == nil) {
+            NSLog(@"Failed to initialize XML parser.");
+            return;
+        }
+        self.configParser.delegate = self;
+        [self.configParser parse];
+    }
+}
+
+#pragma mark XML
+
+- (void)parser:(NSXMLParser*)parser didStartElement:(NSString*)elementName namespaceURI:(NSString*)namespaceURI qualifiedName:(NSString*)qualifiedName attributes:(NSDictionary*)attributeDict
+{
+    if ([elementName isEqualToString:@"bloom-ad"]) {
+        self.bloomAdElement = elementName;
+        NSLog(@"bloom-ad config:%@", attributeDict);
+    } else if (self.bloomAdElement && [elementName isEqualToString:@"param"]) {
+        NSString *name = attributeDict[@"name"];
+        NSString *value = attributeDict[@"value"];
+        if ([name isEqualToString:@"appId"]) {
+            self.appId = value;
+        } else if ([name isEqualToString:@"splashLogo"]) {
+            self.splashLogo = value;
+        }
+    }
+}
+
+- (void)parser:(NSXMLParser*)parser didEndElement:(NSString*)elementName namespaceURI:(NSString*)namespaceURI qualifiedName:(NSString*)qualifiedName
+{
+    if ([elementName isEqualToString:@"bloom-ad"]) {
+        [self.configParser abortParsing];
+        self.bloomAdElement = nil;
+        // 初始化广告SDK
+        [self setupBloomADSDK];
+            
+        // 显示开屏
+        [self showSplashAdFromLaunch:YES];
+    }
 }
 
 #pragma mark - Getter and Setter
@@ -54,6 +188,11 @@
     if ([uid isKindOfClass:[NSString class]]) {
         BMADConfigModel *config = [BloomADSDKApi getConfig];
         config.userId = uid;
+        [BMADH5Tool log:@"setUserId:%@", uid];
+    } else {
+        BMADConfigModel *config = [BloomADSDKApi getConfig];
+        config.userId = nil;
+        [BMADH5Tool log:@"setUserId:nil"];
     }
 }
 
@@ -388,24 +527,4 @@
     }
 }
 
-//- (void)showRewardVideoAd:(CDVInvokedUrlCommand*)command {
-//    NSLog(@"BloomAdPlugin -> showRewardVideoAd");
-//    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event":@"onLoad"}];
-//
-//    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-//}
-//
-//- (void)showBannerAd:(CDVInvokedUrlCommand*)command {
-//    NSLog(@"BloomAdPlugin -> showBannerAd");
-//    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event":@"onLoad"}];
-//
-//    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-//}
-//
-//- (void)showInterstitialAd:(CDVInvokedUrlCommand*)command {
-//    NSLog(@"BloomAdPlugin -> showInterstitialAd");
-//    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:@{@"event":@"onLoad"}];
-//
-//    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-//}
 @end
