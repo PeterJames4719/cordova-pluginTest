@@ -107,13 +107,37 @@
     }
 }
 
+- (void)handleApplicationWillEnterForeground:(NSNotification *)notification {
+    double last = [[NSUserDefaults standardUserDefaults] doubleForKey:@"AppLastSplashShownTimestamp"];
+    double ts = [[NSDate date] timeIntervalSince1970];
+    double delt = ts - last;
+    
+    NSLog(@"splash -> interval:%lf", delt);
+
+    NSInteger interval = 10;// 3分钟间隔展示开屏
+    if (interval <= 0) {
+        return;
+    }
+    
+    if (delt >= interval) {
+        NSLog(@"splash -> should show");
+        [self showSplashAdFromLaunch:NO];
+    }
+}
+
 - (void)pluginInitialize {
     NSLog(@"BloomAdPlugin -> pluginInitialize");
-    [self parseConfig];
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        [self parseConfig];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleApplicationWillEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:nil];
+    });
 }
 
 - (void)dealloc {
     NSLog(@"BloomAdPlugin -> dealloc");
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)parseConfig {
@@ -133,6 +157,8 @@
         [self.configParser parse];
     }
 }
+
+
 
 #pragma mark XML
 
