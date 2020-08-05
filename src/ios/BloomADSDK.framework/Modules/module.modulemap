@@ -1,0 +1,6 @@
+framework module BloomADSDK {
+  umbrella header "BloomADSDK.h"
+
+  export *
+  module * { export * }
+}

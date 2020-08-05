@@ -16,5 +16,15 @@
         <source-file src="src/ios/BMADH5Tool.m" />
         <header-file src="src/ios/BloomAdPlugin.h" />
         <source-file src="src/ios/BloomAdPlugin.m" />
+        <framework src="src/ios/BloomADSDK.framework" custom="true" embed="true"/>
+        <resource-file src="src/ios/BUAdSDK.bundle"/>
+        <podspec>
+          <config>
+            <source url="https://github.com/CocoaPods/Specs.git"/>
+          </config>
+          <pods use-frameworks="false">
+            <pod name="KSAdSDK" spec="2.7.2" />
+          </pods>
+        </podspec>
     </platform>
 </plugin>
